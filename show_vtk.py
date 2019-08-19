@@ -13,10 +13,10 @@ import vtk.util.numpy_support as vtk_np
 
 
 class VTKActorWrapper(object):
-    def __init__(self, nparray, color=[0, 1, 0]):
+    def __init__(self, nparray, color=[1,1,1], opacity=1):
         super(VTKActorWrapper, self).__init__()
         self.actors = []
-        self.addPoints(nparray, color)
+        self.addPoints(nparray, color, opacity)
         self.mean = nparray.mean(axis=0)
 
     def addPlane(self, w):
@@ -41,7 +41,7 @@ class VTKActorWrapper(object):
 
         self.actors.append(actor)
 
-    def addPoints(self, nparray, color):
+    def addPoints(self, nparray, color, opacity):
         self.nparray = nparray
 
         nCoords = nparray.shape[0]
@@ -66,6 +66,7 @@ class VTKActorWrapper(object):
         actor.SetMapper(self.mapper)
         actor.GetProperty().SetRepresentationToPoints()
         actor.GetProperty().SetColor(color)
+        actor.GetProperty().SetOpacity(opacity)
         self.actors.append(actor)
 
     def update(self, threadLock, update_on):
@@ -124,17 +125,33 @@ class VTKVisualisation(object):
         self.threadLock.release()
 
 
+threadLock = threading.Lock()
+viz = None
+
+def show_cloud(points, color=[1,1,1], opacity=0.25):
+    global viz
+    if viz == None:
+        viz = VTKVisualisation(threadLock)
+    actorWrapper = VTKActorWrapper(points, color, opacity)
+    #actorWrapper.update(threadLock, update_on)
+    # actorWrapper.addPlane(W[i])
+    viz.addActor(actorWrapper)
+
+
 def show_planes(points, W):
+
     update_on = threading.Event()
     update_on.set()
+    global viz
+    if viz == None:
+        viz = VTKVisualisation(threadLock)
 
-    threadLock = threading.Lock()
 
     #pp = np.load('Pin.npy', allow_pickle=True)
     #W = np.load('W.npy')
     #pc = pp[1] - pp[1].mean(axis=0)
 
-    viz = VTKVisualisation(threadLock)
+
     #for i in range(len(points)):
     for i in range(10):
         actorWrapper = VTKActorWrapper(points[i], np.fabs(W[i, 0:3]))

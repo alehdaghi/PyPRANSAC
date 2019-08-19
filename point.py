@@ -140,7 +140,9 @@ def main():
     #    v = not(visual.WasStopped())
     #showPlanes(Ws[i, p, 0:3], Ws[i, p, 3])
 
+    show_vtk.show_cloud(pointsArray)
     show_vtk.show_planes(Pin, W)
+
 
 if __name__ == "__main__":
     # import cProfile

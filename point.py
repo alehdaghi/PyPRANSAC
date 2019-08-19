@@ -140,51 +140,7 @@ def main():
     #    v = not(visual.WasStopped())
     #showPlanes(Ws[i, p, 0:3], Ws[i, p, 3])
 
-    show_vtk.main()
-
-def addPlane(renderWindow, w, d):
-    colors = vtk.vtkNamedColors()
-
-    # Set the background color.
-    colors.SetColor("BkgColor", [26, 51, 77, 255])
-
-
-
-    # Create a plane
-    planeSource = vtk.vtkPlaneSource()
-    p = d / w[2]
-    planeSource.SetCenter(0.0, 0.0, p)
-    planeSource.SetNormal(w[0], w[1], w[2])
-    planeSource.Update()
-
-    plane = planeSource.GetOutput()
-
-    # Create a mapper and actor
-    mapper = vtk.vtkPolyDataMapper()
-    mapper.SetInputData(plane)
-
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-    actor.GetProperty().SetColor(colors.GetColor3d("Cyan"))
-
-    # Create a renderer, render window and interactor
-    renderer = vtk.vtkRenderer()
-    renderWindow.AddRenderer(renderer)
-
-    # Add the actors to the scene
-    renderer.AddActor(actor)
-    renderer.SetBackground(colors.GetColor3d("BkgColor"))
-
-def showPlanes(Ws, ds):
-    renderWindow = vtk.vtkRenderWindow()
-    renderWindow.SetWindowName("Plane")
-    for i in range(ds.shape[0]):
-        addPlane(renderWindow, Ws[i], ds[i])
-    renderWindowInteractor = vtk.vtkRenderWindowInteractor()
-    renderWindowInteractor.SetRenderWindow(renderWindow)
-    # Render and interact
-    renderWindow.Render()
-    renderWindowInteractor.Start()
+    show_vtk.show_planes(Pin, W)
 
 if __name__ == "__main__":
     # import cProfile

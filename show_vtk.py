@@ -93,7 +93,7 @@ class VTKVisualisation(object):
 
         self.axesActor = vtk.vtkAxesActor()
         self.axesActor.AxisLabelsOff()
-        self.axesActor.SetTotalLength(0.1, 0.1, 0.1)
+        self.axesActor.SetTotalLength(0.02, 0.02, 0.02)
         self.ren.AddActor(self.axesActor)
 
         self.renWin = vtk.vtkRenderWindow()
@@ -124,28 +124,31 @@ class VTKVisualisation(object):
         self.threadLock.release()
 
 
-def main():
+def show_planes(points, W):
     update_on = threading.Event()
     update_on.set()
 
     threadLock = threading.Lock()
 
-    pp = np.load('Pin.npy', allow_pickle=True)
-    W = np.load('W.npy')
+    #pp = np.load('Pin.npy', allow_pickle=True)
+    #W = np.load('W.npy')
     #pc = pp[1] - pp[1].mean(axis=0)
-    pc = pp[0]
-    actorWrapper = VTKActorWrapper(pc, [1,0,0])
-    actorWrapper.update(threadLock, update_on)
-    actorWrapper.addPlane(W[0])
-
-    pc = pp[1]
-    actorWrapper2 = VTKActorWrapper(pc, [0, 1,0])
-    actorWrapper2.update(threadLock, update_on)
-
 
     viz = VTKVisualisation(threadLock)
-    viz.addActor(actorWrapper)
-    viz.addActor(actorWrapper2)
+    #for i in range(len(points)):
+    for i in range(10):
+        actorWrapper = VTKActorWrapper(points[i], np.fabs(W[i, 0:3]))
+        actorWrapper.update(threadLock, update_on)
+        #actorWrapper.addPlane(W[i])
+        viz.addActor(actorWrapper)
+
+    #actorWrapper2 = VTKActorWrapper(points[1], [0, 1,0])
+    #actorWrapper2.update(threadLock, update_on)
+
+
+
+
+    #viz.addActor(actorWrapper2)
 
     viz.iren.Start()
     update_on.clear()

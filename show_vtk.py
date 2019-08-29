@@ -155,7 +155,7 @@ def show_planes(points, W):
     #for i in range(len(points)):
     for i in range(10):
         actorWrapper = VTKActorWrapper(points[i], np.fabs(W[i, 0:3]))
-        actorWrapper.update(threadLock, update_on)
+        #actorWrapper.update(threadLock, update_on)
         #actorWrapper.addPlane(W[i])
         viz.addActor(actorWrapper)
 
@@ -166,7 +166,10 @@ def show_planes(points, W):
 
 
     #viz.addActor(actorWrapper2)
-
+def showVTK():
+    update_on = threading.Event()
+    update_on.set()
+    global viz
     viz.iren.Start()
     update_on.clear()
 

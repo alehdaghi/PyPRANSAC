@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "egbis.h"
 
 #include "egbis/segment-image.h"
+#include "iins/integral_image_normal.h"
 
 #include <cstdio>
 #include <fstream>
@@ -46,24 +47,24 @@ image<rgb>* convertArrayToNativeImage(float* input, int h, int w){
 bool convertNativeToArray(image<rgb>* input, float* output){
 	int w = input->width();
 	int h = input->height();
-    memcpy(output, input->data, h * w * sizeof(rgb));
+    memcpy(output, input->data, h * w * 3 * sizeof(float));
     
 }
 
 extern "C" {
-PyObject* runEgbisOnMat(float* input, int h, int w, float* output, float sigma, float k, int min_size, int &numccs) {
-	printf("h=%d w=%d sigma=%f k=%f min_size=%d\n", h, w, sigma, k, min_size);
+PyObject* runEgbisOnMat(image<rgb> *nativeImage, float* output, float sigma, float k, int min_size, int &numccs) {
+//	printf("h=%d w=%d sigma=%f k=%f min_size=%d\n", h, w, sigma, k, min_size);
     // 1. Convert to native format
-    printf("1. Convert to native format\n");
-    image<rgb> *nativeImage = convertArrayToNativeImage(input, h, w);
+//    printf("1. Convert to native format\n");
+    //image<rgb> *nativeImage = convertArrayToNativeImage(input, h, w);
     // 2. Run egbis algoritm
-    printf("2. Run egbis algorithm\n");
+//    printf("2. Run egbis algorithm\n");
     int n = 0;
     std::vector<std::vector<std::pair<int,int>>> segs;
     image<rgb> *segmentedImage = segment_image(nativeImage, sigma, k, min_size, &n, segs);
     numccs = n;
     // 3. Convert back to Mat format
-    printf("3. Convert back to Mat format\n");
+
     convertNativeToArray(segmentedImage, output);
 
 	delete nativeImage;
@@ -79,7 +80,7 @@ PyObject* runEgbisOnMat(float* input, int h, int w, float* output, float sigma, 
     PyObject* sizes = PyList_New(0);
 
     int i=0;
-    printf("size: %ud \n", segs.size());
+//    printf("size: %ud \n", segs.size());
     for (auto& vec : segs) {
 
         if (vec.empty())
@@ -99,26 +100,39 @@ PyObject* runEgbisOnMat(float* input, int h, int w, float* output, float sigma, 
 
 
 }
-PyObject* foo()
-{
-    PyObject* result = PyList_New(0);
-    int i;
-
-
-    for (i = 0; i < 100000; ++i)
-    {
-//        PyObject* subList = PyList_New(0);
-        for (int j=0; j < 5; j++)
-            PyList_Append(result, PyLong_FromLong(i*5 + j));
-//        PyList_Append(result, PyTuple_Pack(2, Py_BuildValue("i", i), Py_BuildValue("i", j)));
-//            PyList_Append(result, Py_BuildValue("(i i)", i , j));
-//        PyList_Append(result, subList);
-//        delete subList;
-//        PyList_Append(result, PyLong_FromLong(i));
-    }
-
-    return result;
+int computeNormal(float* input, int h, int w, PointCloudOut& output){
+    PointCloudIn  im;
+    im.width = w;
+    im.height = h;
+    im.points.resize(w*h);
+    float* temp = new float[w * h * 3];
+    memcpy(&im.points[0], input, w * h * sizeof(PointInT));
+    IntegralImageNormalEstimation imageNormalEstimation;
+    imageNormalEstimation.setNormalEstimationMethod (IntegralImageNormalEstimation::NormalEstimationMethod::AVERAGE_3D_GRADIENT);
+    imageNormalEstimation.setMaxDepthChangeFactor(0.04f);
+    imageNormalEstimation.setNormalSmoothingSize(10.0f);
+    imageNormalEstimation.setInputCloud(input, h, w);
+    imageNormalEstimation.computeFeature(output);
+    return 0;
 }
+
+PyObject*  segmentByNormal(float* input, int h, int w, float* normalData, float* output, float sigma, float k, int min_size, int &numccs) {
+    PointCloudOut normal;
+    computeNormal(input, h, w, normal);
+    memcpy(normalData, &normal.points[0], w * h * sizeof(PointOutT));
+
+    image<rgb> *im = new image<rgb>(w,h);
+    for (int i =0 ; i< normal.points.size() ; i++) {
+        im->data[i].r = (normal.points[i].normal_x + 1) * 127.5;
+        im->data[i].g = (normal.points[i].normal_y + 1) * 127.5;
+        im->data[i].b = (normal.points[i].normal_z + 1) * 127.5;
+    }
+//    memcpy(im->data, normalData, h * w * sizeof(rgb));
+
+    return runEgbisOnMat(im, output, sigma, k, min_size, numccs);
+}
+
+
 }
 
 int main() {

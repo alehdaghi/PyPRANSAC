@@ -29,6 +29,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  //~ ***/
 //~ cv::Mat runEgbisOnMat(const cv::Mat& input, float sigma, float k, int min_size, int *numccs);
 extern "C" {
-PyObject* runEgbisOnMat(float* input, int h, int w, float* output, float sigma, float k, int min_size, int &numccs);
+//PyObject* runEgbisOnMat(float* input, int h, int w, float* output, float sigma, float k, int min_size, int &numccs);
 }
 #endif

@@ -31,10 +31,10 @@ class Util:
         """
         rows, cols = depth.shape
         c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
-        valid = (depth > 0) & (depth < 255)
-        z = np.where(valid, depth / 256.0, np.nan)
-        x = np.where(valid, z * (c - self.cx) / self.fx, 0)
-        y = np.where(valid, z * (r - self.cy) / self.fy, 0)
+        valid = (depth > 0)
+        z = np.where(valid, depth / 1000, np.nan)
+        x = np.where(valid, z * (c - self.cx) / self.fx, np.nan)
+        y = np.where(valid, z * (r - self.cy) / self.fy, np.nan)
 
         points = np.dstack((x, y, z)).astype(np.float32)
         #if depth.shape != rgb.shape:
@@ -88,14 +88,27 @@ def extractPlanes(I):
     #rng_states = create_xoroshiro128p_states(threads_per_block * blocks, seed=seed)
     #pRANSAC.my_RANSAC[N, threads_per_block](Ws, percents, pointsArray, sizes, starts, rng_states)
     #normal = pcl.IntegralImageNormalEstimation(util.cloud)
-    for I in range(0, 5558):
-        depth = imageio.imread('/media/mahdi/4418B81419D11C10/media/private/dataset/scannet/0/img/depth/'+str(I) + '.png')
+
+    T = np.loadtxt(path + 'pose/' + str(0) + '.txt')
+    t0 = T[0:3, 3]
+    for I in range(3070, 6000, 10):
+        depth = imageio.imread(path + 'depth/'+str(I) + '.png')
+        T = np.loadtxt(path + 'pose/' + str(I) + '.txt')
+        R = T[0:3, 0:3]
+        t = T[0:3, 3] - t0
+
         #color = imageio.imread('color/0.jpg')
 
-        points = util.point_cloud(depth/100.0, None)
+        points = util.point_cloud(depth, None)
+        points = points.dot(R.T) + t
         normalImg, seg, sizes, xs, ys = util.segment_image(points, sigma=0.9, k=200, min_size=1000)
-        imageio.imwrite('/media/mahdi/4418B81419D11C10/media/private/dataset/scannet/0/img/normal/'+str(I) + '.png', normalImg)
-        imageio.imwrite('/media/mahdi/4418B81419D11C10/media/private/dataset/scannet/0/img/plane/' + str(I) + '.png', seg)
+
+
+        #plt.imshow(seg.astype(np.uint8) * 10, interpolation='nearest')
+        #plt.show()
+
+        imageio.imwrite(path + 'normal/'+str(I) + '.png', normalImg)
+        imageio.imwrite(path + 'plane/' + str(I) + '.png', seg.astype(np.uint8))
         pointsArray = points[ys, xs]
         starts = np.cumsum(sizes) - sizes
         N = len(sizes)
@@ -109,14 +122,18 @@ def extractPlanes(I):
         i = np.arange(p.shape[0])
         W = Ws[i, p]
         P = percents[i, p]
-        Pin, P = pRANSAC.cpu_removeOutliers(W, P, pointsArray, sizes, starts)
+        sizes = np.asanyarray(sizes)
 
-        np.save(path+'data/points'+str(I), pointsArray)
-        np.save(path+'data/starts'+str(I), starts)
-        np.save(path+'data/sizes'+str(I), sizes)
-        np.save(path+'data/W'+str(I), W)
-        np.save(path+'data/P'+str(I), p)
-        np.save(path+'data/Pall'+str(I), P)
+        mask = (sizes>1000) & (P > 0.70)
+        Pin = pRANSAC.cpu_removeOutliers(W[mask], P[mask], pointsArray, sizes[mask], starts[mask])
+
+        print("Wrting frame", I)
+        #np.save(path+'data/points'+str(I), pointsArray)
+        np.save(path+'data/starts'+str(I), starts[mask])
+        np.save(path+'data/sizes'+str(I), sizes[mask])
+        np.save(path+'data/W'+str(I), W[mask])
+        #np.save(path+'data/P'+str(I), p)
+        #np.save(path+'data/Pall'+str(I), P)
         np.save(path+'data/Pin'+str(I), Pin)
     return
 
@@ -139,10 +156,13 @@ def extractPlanes(I):
 
 
 if __name__ == "__main__":
+    extractPlanes(0)
+    exit(0)
     # import cProfile
     # cProfile.run('main()', sort='time')
+    np.set_printoptions(precision=3)
     n = 0
-    m = 200
+    m = 100
     W1 = np.load(path + 'data/W' + str(n)+'.npy')
     pointsArray1 = np.load(path + 'data/points' + str(n)+'.npy')
     Pin1 = np.load(path + 'data/Pin' + str(n)+'.npy', allow_pickle=True)
@@ -158,14 +178,43 @@ if __name__ == "__main__":
 
     R2 = T2[0:3, 0:3]
     t2 = T2[0:3, 3] - t1
+    depth = imageio.imread(path + 'depth/' + str(n) + '.png')
+    points1 = util.point_cloud(depth , None).reshape((-1, 3))
+
+    depth = imageio.imread(path + 'depth/' + str(m) + '.png')
+    points2 = util.point_cloud(depth , None).reshape((-1, 3))
 
 
-    print(W1.dot(R1.T))
 
-    #show_vtk.show_cloud(pointsArray1.dot(R1.T) , [1, 0, 0])
-    #show_vtk.show_cloud(pointsArray2.dot(R2.T) + t2/50, [0, 1, 0])
-    show_vtk.show_planes([p.dot(R1.T) for p in Pin1], W1)
-    show_vtk.show_planes([p.dot(R2.T) + t2/50 for p in Pin2], W2)
+    #D1 = np.zeros_like(W1[:, 0:3])
+    #D1[:, 2] = -W1[:, 3]/W1[:, 2]
+    #W1[:, 0:3] = W1[:, 0:3].dot(R1.T)
+    # W1[:, 3] = (W1[:, 0:3] * D1.dot(R1.T)).sum(axis=1)
+
+    # D2 = np.zeros_like(W2[:, 0:3])
+    # D2[:, 2] = -W2[:, 3] / W2[:, 2]
+    # W2[:, 0:3] = W2[:, 0:3].dot(R2.T)
+    # W2[:, 3] = (W2[:, 0:3] * (D2.dot(R2.T) + t2)).sum(axis=1)
+
+    show_vtk.show_cloud(pointsArray1 , [1, 0, 0])
+    show_vtk.show_cloud(pointsArray2, [0, 1, 0])
+
+
+
+    l = 10
+    w1 = W1[0:l, :]
+    w2 = W2[0:l, :]
+    #w1 = w1[w1[:, 0].argsort()]
+    #w2 = w2[w2[:, 0].argsort()]
+    #show_vtk.show_planes(Pin1, w1)
+    #show_vtk.show_planes(Pin2, w2)
+
+    print(w1, '\n' , w2)
+
+
+    #show_vtk.show_cloud(points1.dot(R1.T) , [1, 0, 0])
+    #show_vtk.show_cloud(points2.dot(R2.T) + t2, [0, 1, 0])
+
     show_vtk.showVTK()
     #
     #extractPlanes(0)

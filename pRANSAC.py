@@ -52,7 +52,7 @@ def compute_pi(rng_states, iterations, out):
     out[thread_id] = 4.0 * inside / iterations
 
 
-THR_PLANE = 0.005
+THR_PLANE = 0.01
 
 
 @cuda.jit
@@ -113,17 +113,19 @@ def cpu_RANSAC(Ws, percents, segs, lens, start):
 
             Ws[j, i, 0:3] = w
             Ws[j, i, 3] = d
+            if d < 0:
+                Ws[j,i] = -Ws[j,i]
             percents[j , i] = cc / lens[j]
 
 
 def cpu_removeOutliers(Ws, percents, segs, lens, start):
     N = Ws.shape[0]
     segs = np.concatenate((segs, np.ones((segs.shape[0], 1))), axis=1)
-    P = np.split(segs, start)[1:]
+    # P = np.split(segs, start)[1:]
 
     Pin = []
     for j in range(N):
-        p = P[j]
+        p = segs[start[j]:start[j] + lens[j]]
         distance = np.fabs(np.dot(p, Ws[j]))
         Pin.append(p[distance < THR_PLANE][:, 0:3])
-    return Pin, P
+    return Pin

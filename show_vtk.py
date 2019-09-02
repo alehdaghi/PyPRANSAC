@@ -153,7 +153,7 @@ def show_planes(points, W):
 
 
     #for i in range(len(points)):
-    for i in range(10):
+    for i in range(len(W)):
         actorWrapper = VTKActorWrapper(points[i], np.fabs(W[i, 0:3]))
         #actorWrapper.update(threadLock, update_on)
         #actorWrapper.addPlane(W[i])

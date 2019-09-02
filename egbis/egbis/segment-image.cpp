@@ -159,6 +159,7 @@ image<rgb>* visualize(universe *u, int width, int height, std::vector<std::vecto
             if (ids[comp] == 0) {
                 ids[comp] = cc++;
             }
+            imRef(output, x, y).r = ids[comp];
             segs[ids[comp] - 1].push_back(std::make_pair(x,y));
         }
     }

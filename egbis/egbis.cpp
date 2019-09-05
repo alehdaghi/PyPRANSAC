@@ -60,7 +60,7 @@ PyObject* runEgbisOnMat(image<rgb> *nativeImage, float* output, float sigma, flo
     // 2. Run egbis algoritm
 //    printf("2. Run egbis algorithm\n");
     int n = 0;
-    std::vector<std::vector<std::pair<int,int>>> segs;
+    std::vector<std::pair<int, std::vector<std::pair<int,int>>>> segs;
     image<rgb> *segmentedImage = segment_image(nativeImage, sigma, k, min_size, &n, segs);
     numccs = n;
     // 3. Convert back to Mat format
@@ -71,24 +71,26 @@ PyObject* runEgbisOnMat(image<rgb> *nativeImage, float* output, float sigma, flo
 	delete segmentedImage;
 
     std::sort(segs.begin(), segs.end(),[](const auto& s1, const auto& s2 ){
-        return s1.size() < s2.size();
+        return s1.second.size() < s2.second.size();
     });
     std::reverse(segs.begin(), segs.end());
 
     PyObject* x = PyList_New(0);
     PyObject* y = PyList_New(0);
     PyObject* sizes = PyList_New(0);
+    PyObject* ids = PyList_New(0);
 
     int i=0;
 //    printf("size: %ud \n", segs.size());
     for (auto& vec : segs) {
 
-        if (vec.empty())
+        if (vec.second.empty())
             continue;
         //PyObject *subList = PyTuple_New(vec.size());
         int c =0;
-        PyList_Append(sizes, PyLong_FromLong(vec.size()));
-        for (auto& pair : vec) {
+        PyList_Append(sizes, PyLong_FromLong(vec.second.size()));
+        PyList_Append(ids, PyLong_FromLong(vec.first));
+        for (auto& pair : vec.second) {
             //printf("%d %d\n", set.first, set.second);
             PyList_Append(x, PyLong_FromLong(pair.first));
             PyList_Append(y, PyLong_FromLong(pair.second));
@@ -96,7 +98,7 @@ PyObject* runEgbisOnMat(image<rgb> *nativeImage, float* output, float sigma, flo
         }
     }
 
-    return Py_BuildValue("(N (N N))", sizes, x, y);
+    return Py_BuildValue("(N N (N N))", sizes, ids, x, y);
 
 
 }
@@ -152,7 +154,7 @@ int main() {
         }
     }
     int numccs;
-    std::vector<std::vector<std::pair<int,int>>> segs;
+    std::vector<std::pair<int, std::vector<std::pair<int,int>>>> segs;
     image<rgb> *segmentedImage = segment_image(im, 0.30, 200 , 200, &numccs, segs);
     std::vector<int> vec{1,2,3,4,5,6,7,8,9, 10};
     //foo();

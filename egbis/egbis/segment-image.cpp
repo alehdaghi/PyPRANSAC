@@ -135,7 +135,7 @@ universe *segmentation(image<rgb> *im, float sigma, float c, int min_size,
     return u;
 }
 
-image<rgb>* visualize(universe *u, int width, int height, std::vector<std::vector<std::pair<int,int>>>& segs, image<rgb> *input){
+image<rgb>* visualize(universe *u, int width, int height, std::vector<std::pair<int, std::vector<std::pair<int,int>>>>& segs, image<rgb> *input){
     image<rgb> *output = new image<rgb>(width, height);
 
     // pick random colors for each component
@@ -158,9 +158,10 @@ image<rgb>* visualize(universe *u, int width, int height, std::vector<std::vecto
             imRef(output, x, y) = colors[comp];
             if (ids[comp] == 0) {
                 ids[comp] = cc++;
+                segs[ids[comp] - 1].first = cc - 1;
             }
             imRef(output, x, y).r = ids[comp];
-            segs[ids[comp] - 1].push_back(std::make_pair(x,y));
+            segs[ids[comp] - 1].second.emplace_back(std::make_pair(x,y));
         }
     }
 
@@ -169,7 +170,7 @@ image<rgb>* visualize(universe *u, int width, int height, std::vector<std::vecto
 }
 
 image<rgb> *segment_image(image<rgb> *im, float sigma, float c, int min_size,
-                          int *num_ccs, std::vector<std::vector<std::pair<int,int>>>& segs) {
+                          int *num_ccs, std::vector<std::pair<int, std::vector<std::pair<int,int>>>>& segs) {
     universe *u = segmentation(im, sigma, c, min_size, num_ccs);
     segs.resize(*num_ccs);
     image<rgb> *visualized = visualize(u, im->width(), im->height(), segs, im);

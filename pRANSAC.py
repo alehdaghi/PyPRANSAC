@@ -52,7 +52,7 @@ def compute_pi(rng_states, iterations, out):
     out[thread_id] = 4.0 * inside / iterations
 
 
-THR_PLANE = 0.01
+THR_PLANE = 0.02
 
 
 @cuda.jit
@@ -129,3 +129,14 @@ def cpu_removeOutliers(Ws, percents, segs, lens, start):
         distance = np.fabs(np.dot(p, Ws[j]))
         Pin.append(p[distance < THR_PLANE][:, 0:3])
     return Pin
+
+def fitBestPlane(Pin):
+    mean = np.asarray([P.mean(axis=0) for P in Pin])
+    X = [P - P.mean(axis=0) for P in Pin]
+    C = [np.dot(x.T, x) / (x.shape[0] - 1) for x in X]
+    u, s, vh = np.linalg.svd(C)
+    w = np.zeros((len(Pin), 4), np.float32)
+    w[:, 0:3] = u[:, :, 2]
+    w[:, 3] = (w[:, 0:3] * mean).sum(axis=1)
+    return w
+

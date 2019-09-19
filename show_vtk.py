@@ -138,7 +138,7 @@ def show_cloud(points, color=[1,1,1], opacity=0.25):
     viz.addActor(actorWrapper)
 
 
-def show_planes(points, W):
+def show_planes(points, color, index=None):
 
     update_on = threading.Event()
     update_on.set()
@@ -146,26 +146,13 @@ def show_planes(points, W):
     if viz == None:
         viz = VTKVisualisation(threadLock)
 
+    if index is None:
+       index = np.arange(0, len(points))
 
-    #pp = np.load('Pin.npy', allow_pickle=True)
-    #W = np.load('W.npy')
-    #pc = pp[1] - pp[1].mean(axis=0)
-
-
-    #for i in range(len(points)):
-    for i in range(len(W)):
-        actorWrapper = VTKActorWrapper(points[i], np.fabs(W[i, 0:3]))
-        #actorWrapper.update(threadLock, update_on)
-        #actorWrapper.addPlane(W[i])
+    for i in index:
+        actorWrapper = VTKActorWrapper(points[i], color)
         viz.addActor(actorWrapper)
 
-    #actorWrapper2 = VTKActorWrapper(points[1], [0, 1,0])
-    #actorWrapper2.update(threadLock, update_on)
-
-
-
-
-    #viz.addActor(actorWrapper2)
 def showVTK():
     update_on = threading.Event()
     update_on.set()
